@@ -13,7 +13,7 @@ Server 模式是文颜专为「多公众号管理、无固定 IP 环境、自动
 ```mermaid
 sequenceDiagram
     autonumber
-    participant Client as Wenyan CLI/MCP (客户端)
+    participant Client as dreamai-wechat-cli / MCP (客户端)
     participant Server as Wenyan Server (服务端)
     participant Wechat as 微信公众号 API
 
@@ -41,17 +41,17 @@ sequenceDiagram
 npm install -g @wenyan-md/cli
 
 # 验证安装成功
-wenyan --version
+dreamai-wechat-cli --version
 ```
 
 启动服务：
 
 ```bash
 # 基础启动（默认端口 3000，无 API 鉴权）
-wenyan serve
+dreamai-wechat-cli serve
 
 # 自定义端口 + 开启 API 鉴权（推荐生产环境）
-wenyan serve --port 8080 --api-key your-secret-api-key-123456
+dreamai-wechat-cli serve --port 8080 --api-key your-secret-api-key-123456
 ```
 
 ### 启动参数说明

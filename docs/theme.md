@@ -5,17 +5,17 @@
 **列出主题：**
 
 ```bash
-wenyan theme -l
+dreamai-wechat-cli theme -l
 ```
 
 **添加主题：**
 
 ```bash
 # 添加本地 CSS 主题文件（推荐）
-wenyan theme --add --name my-theme --path ./custom-theme.css
+dreamai-wechat-cli theme --add --name my-theme --path ./custom-theme.css
 
 # 添加网络 CSS 主题文件（需确保网络可访问）
-wenyan theme --add --name online-theme --path https://wenyan.yuzhi.tech/manhua.css
+dreamai-wechat-cli theme --add --name online-theme --path https://wenyan.yuzhi.tech/manhua.css
 ```
 
 **删除主题：**
@@ -23,7 +23,7 @@ wenyan theme --add --name online-theme --path https://wenyan.yuzhi.tech/manhua.c
 仅支持删除**自定义主题**，内置主题无法删除。
 
 ```bash
-wenyan theme --rm my-theme
+dreamai-wechat-cli theme --rm my-theme
 ```
 
 ## 常用参数说明

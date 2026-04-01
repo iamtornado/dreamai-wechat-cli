@@ -1,10 +1,18 @@
-# wenyan-cli 发布指南
+# dreamai-wechat-cli 发布指南（DreamAI 分支）
 
 ## 准备工作
 
 你需要准备一篇 Markdown 格式的文章，包含必要的 frontmatter（标题、封面等元数据）。如果文章内包含图片，确保图片路径正确且可访问，CLI 会自动上传图片到微信公众号素材库。
 
-## 安装 wenyan-cli
+## 安装 dreamai-wechat-cli
+
+从本仓库（GitHub）：
+
+```bash
+npm install -g github:iamtornado/dreamai-wechat-cli
+```
+
+或使用上游已发布的包（二进制名仍为上游自带的 `wenyan`，与本文档命令名不同）：
 
 ```bash
 npm install -g @wenyan-md/cli
@@ -13,7 +21,7 @@ npm install -g @wenyan-md/cli
 确认安装成功：
 
 ```bash
-wenyan --version
+dreamai-wechat-cli --version
 ```
 
 ## 发布文章
@@ -21,7 +29,7 @@ wenyan --version
 发布文章的基本命令如下：
 
 ```bash
-wenyan publish [options]
+dreamai-wechat-cli publish [options]
 ```
 
 ### 命令参数说明
@@ -41,19 +49,19 @@ wenyan publish [options]
 ### 从本地文件读取并发布
 
 ```bash
-wenyan publish -f article.md
+dreamai-wechat-cli publish -f article.md
 ```
 
 ### 指定排版主题
 
 ```bash
-wenyan publish -f article.md -t orangeheart
+dreamai-wechat-cli publish -f article.md -t orangeheart
 ```
 
 ### 指定代码高亮主题
 
 ```bash
-wenyan publish -f article.md -h solarized-light
+dreamai-wechat-cli publish -f article.md -h solarized-light
 ```
 
 ## 主题管理
@@ -61,7 +69,7 @@ wenyan publish -f article.md -h solarized-light
 主题管理的基本命令如下：
 
 ```bash
-wenyan theme [options]
+dreamai-wechat-cli theme [options]
 ```
 
 ### 命令参数说明
@@ -77,7 +85,7 @@ wenyan theme [options]
 ###  列出可使用的主题
 
 ```bash
-wenyan theme -l
+dreamai-wechat-cli theme -l
 ```
 
 ## Frontmatter 要求

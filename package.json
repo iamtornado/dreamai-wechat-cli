@@ -1,7 +1,7 @@
 {
   "name": "@wenyan-md/cli",
   "version": "2.0.1",
-  "description": "A CLI tool for Wenyan markdown rendering & publishing",
+  "description": "dreamai-wechat-cli — WeChat OA markdown render & draft publishing (Wenyan fork)",
   "author": "Lei <caol64@gmail.com> (https://github.com/caol64)",
   "license": "Apache-2.0",
   "keywords": [
@@ -9,13 +9,14 @@
     "markdown",
     "文颜",
     "wenyan",
+    "dreamai-wechat-cli",
     "wechat",
     "publishing",
     "renderer"
   ],
   "type": "module",
   "bin": {
-    "wenyan": "./dist/cli.js"
+    "dreamai-wechat-cli": "./dist/cli.js"
   },
   "main": "./dist/index.js",
   "types": "./dist/types/index.d.ts",
@@ -32,6 +33,7 @@
   },
   "scripts": {
     "build": "tsc",
+    "prepare": "tsc",
     "upgrade:core": "pnpm update @wenyan-md/core",
     "prepublishOnly": "pnpm upgrade:core && pnpm build",
     "server": "pnpm build && pnpm dotenv -e .env.test -- node ./dist/cli.js serve",

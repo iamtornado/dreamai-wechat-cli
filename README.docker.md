@@ -9,6 +9,8 @@
 > This image bundles **wenyan CLI** and all required runtime dependencies.
 > No local Node.js or npm environment required.
 
+> **本仓库分支：** 若从 GitHub 安装或自建本 fork，终端命令为 **`dreamai-wechat-cli`**。以下命令针对上游镜像 **`caol64/wenyan-cli`**，容器内默认入口仍为 **`wenyan`**。使用仓库内 `Dockerfile.local` 构建时，入口为 `node ./dist/cli.js`，帮助信息中的程序名为 `dreamai-wechat-cli`。
+
 ## Quick Start
 
 ### Pull image

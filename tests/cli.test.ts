@@ -32,7 +32,7 @@ describe("CLI Argument Parsing", () => {
     });
 
     it("should call renderAndPublish with correct options for publish", async () => {
-        const args = ["node", "wenyan", "publish", "-f", "test.md", "-t", "rainbow", "--no-mac-style"];
+        const args = ["node", "dreamai-wechat-cli", "publish", "-f", "test.md", "-t", "rainbow", "--no-mac-style"];
 
         await program.parseAsync(args);
 
@@ -50,7 +50,7 @@ describe("CLI Argument Parsing", () => {
     });
 
     it("should call render command with string input", async () => {
-        const args = ["node", "wenyan", "render", "# Hello"];
+        const args = ["node", "dreamai-wechat-cli", "render", "# Hello"];
 
         await program.parseAsync(args);
 
@@ -66,7 +66,7 @@ describe("CLI Argument Parsing", () => {
 
     it("should display help when no command is provided", async () => {
         const outputSpy = vi.spyOn(process.stdout, "write").mockImplementation(() => true);
-        const args = ["node", "wenyan"];
+        const args = ["node", "dreamai-wechat-cli"];
 
         await program.parseAsync(args);
 

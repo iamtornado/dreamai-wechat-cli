@@ -28,8 +28,8 @@ export function createProgram(version: string = pkg.version): Command {
     const program = new Command();
 
     program
-        .name("wenyan")
-        .description("A CLI for WenYan Markdown Render.")
+        .name("dreamai-wechat-cli")
+        .description("DreamAI WeChat CLI — Markdown 排版与公众号草稿发布（基于文颜能力）")
         .version(version, "-v, --version", "output the current version")
         .action(() => {
             program.outputHelp();

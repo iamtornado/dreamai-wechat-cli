@@ -1,5 +1,7 @@
 # Docker 使用指南
 
+> **本仓库分支：** 从源码或 `github:…` 安装时，命令为 **`dreamai-wechat-cli`**。下文示例默认针对上游镜像 **`caol64/wenyan-cli`**（容器内命令仍为 **`wenyan`**）。
+
 如果你不想在本地安装 Node.js，也可以直接使用 Docker 运行 Wenyan CLI 或 Server。
 
 Docker 支持两种运行模式：

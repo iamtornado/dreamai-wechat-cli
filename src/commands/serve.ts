@@ -88,6 +88,7 @@ export async function serveCommand(options: ServeOptions) {
 
     // 健康检查
     app.get("/health", (_req: Request, res: Response) => {
+        // service 须为 wenyan-cli：@wenyan-md/core 的 renderAndPublishToServer 会校验该字段
         res.json({ status: "ok", service: "wenyan-cli", version: options.version || "unknown" });
     });
 

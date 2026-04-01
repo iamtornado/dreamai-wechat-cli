@@ -39,7 +39,7 @@ async function main(): Promise<void> {
     const token = await getWechatAccessToken();
     const stamp = Date.now();
 
-    const titleCreate = `wenyan-draft-verify-${stamp}`;
+    const titleCreate = `dreamai-draft-verify-${stamp}`;
     const thumbBlob = new Blob([MIN_PNG], { type: "image/png" });
     const { media_id: thumbMediaId } = await uploadMaterial("image", thumbBlob, `verify-${stamp}.png`, token);
 
@@ -56,7 +56,7 @@ async function main(): Promise<void> {
     ]);
     console.log("[1/4] draft/add 成功, media_id=", draftMediaId);
 
-    const titleUpdated = `wenyan-draft-verify-UPDATED-${stamp}`;
+    const titleUpdated = `dreamai-draft-verify-UPDATED-${stamp}`;
     await draftUpdate(token, {
         media_id: draftMediaId,
         index: 0,

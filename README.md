@@ -38,6 +38,7 @@
 
 - 一键发布 Markdown 到微信公众号草稿箱
 - 自动上传本地图片与封面
+- **草稿箱原始 API**：CLI `draft` 子命令与 `serve` 下的 HTTP 接口（与[微信公众平台草稿管理文档](https://developers.weixin.qq.com/doc/subscription/api/draftbox/draftmanage/api_draft_add.html)字段一致：`add` / `update` / `batchget` / `count` / `delete` / `get`）
 - 支持远程 Server 发布（绕过 IP 白名单限制）
 - 内置多套精美排版主题
 - 支持自定义主题
@@ -46,40 +47,63 @@
 
 ## 快速开始
 
+### 从本仓库（GitHub）安装本分支
+
+若未将本 fork 单独发布到 npm，可直接从 Git 安装（需 **Node.js 18+**，且能访问 GitHub 与 npm registry）。安装过程中会执行 `prepare` 脚本自动执行 `tsc` 生成 `dist/`。
+
 ```bash
-# 安装（推荐使用 pnpm）
-pnpm add -g @wenyan-md/cli
-# 发布文章到公众号
-wenyan publish -f article.md
+npm install -g github:iamtornado/dreamai-wechat-cli
+# 或
+pnpm add -g github:iamtornado/dreamai-wechat-cli
 ```
 
-从本仓库源码参与开发时，请先 `pnpm install` 再 `pnpm build`，详见仓库内脚本与文档。
+可将 `github:…` 改为带分支或 tag 的引用，例如 `github:iamtornado/dreamai-wechat-cli#main`。
+
+全局安装后，请在终端使用命令 **`dreamai-wechat-cli`**（本 fork 已与上游二进制名 `wenyan` 区分）。
+
+### 使用上游已发布的 npm 包
+
+与上游一致的包名仍为 `@wenyan-md/cli`（由上游维护发布）；其全局命令名仍为 **`wenyan`**，与本文档中的 **`dreamai-wechat-cli`** 不同：
+
+```bash
+pnpm add -g @wenyan-md/cli
+```
+
+### 常用命令
+
+```bash
+# 发布文章到公众号草稿箱（Markdown → 排版 → draft/add）
+dreamai-wechat-cli publish -f article.md
+```
+
+从本仓库**克隆开发**时：请先 `pnpm install`；`prepare` / `pnpm build` 会生成 `dist/`。
 
 ## 命令概览
 
 ```bash
-wenyan <command> [options]
+dreamai-wechat-cli <command> [options]
 ```
 
 | 命令      | 说明        |
 | ------- | --------- |
 | [publish](docs/publish.md) | 发布文章      |
+| draft   | 草稿箱 API：`count` / `list` / `get` / `update` / `delete` / `add`（`dreamai-wechat-cli draft --help`） |
 | render  | 渲染 HTML   |
 | [theme](docs/theme.md)   | 管理主题      |
-| [serve](docs/server.md)   | 启动 Server |
+| [serve](docs/server.md)   | 启动 Server（含 `/draft/*` 与原有 `/publish` 等） |
 
 ## 概念
 
 ### 内容输入
 
-内容输入是指如何把 Markdown 文章分发给 `wenyan-cli`，支持以下四种方式：
+内容输入是指如何把 Markdown 文章分发给本 CLI（`dreamai-wechat-cli`），支持以下四种方式：
 
 | 方式      | 示例        | 说明        |
 | ------- | --------- |--------- |
-| 本地路径（推荐） | `wenyan publish -f article.md`      |`cli`直接读取磁盘上的文章      |
-| URL | `wenyan publish -f http://test.md`      |`cli`直接读取网络上的文章      |
-| 参数 | `wenyan publish "# 文章"`      |适用于快速发布短内容     |
-| 管道 | `cat article.md \| wenyan publish`      |适用于 CI/CD，脚本批量发布      |
+| 本地路径（推荐） | `dreamai-wechat-cli publish -f article.md`      |`cli`直接读取磁盘上的文章      |
+| URL | `dreamai-wechat-cli publish -f http://test.md`      |`cli`直接读取网络上的文章      |
+| 参数 | `dreamai-wechat-cli publish "# 文章"`      |适用于快速发布短内容     |
+| 管道 | `cat article.md \| dreamai-wechat-cli publish`      |适用于 CI/CD，脚本批量发布      |
 
 ### 环境变量配置
 
@@ -135,20 +159,20 @@ source_url: http://
 
 ## Server 模式
 
-相较于纯本地运行的**本地模式（Local Mode）**，`wenyan-cli`还提供了 **远程客户端模式（Client–Server Mode）**。两种模式运行效果完全一致，你可以根据运行环境和网络条件选择最合适的方式。
+相较于纯本地运行的**本地模式（Local Mode）**，本工具还提供了 **远程客户端模式（Client–Server Mode）**。两种模式运行效果完全一致，你可以根据运行环境和网络条件选择最合适的方式。
 
-在本地模式下，CLI 直接调用微信公众号 API 完成图片上传和草稿发布。
+在本地模式下，`dreamai-wechat-cli` 直接调用微信公众号 API 完成图片上传和草稿发布。
 
 ```mermaid
 flowchart LR
-    CLI[Wenyan CLI] --> Wechat[公众号 API]
+    CLI[dreamai-wechat-cli] --> Wechat[公众号 API]
 ```
 
 在远程客户端模式下，CLI 作为客户端，将发布请求发送到部署在云服务器上的 Wenyan Server，由 Server 完成微信公众号 API 调用。
 
 ```mermaid
 flowchart LR
-    CLI[Wenyan CLI] --> Server[Wenyan Server] --> Wechat[公众号 API]
+    CLI[dreamai-wechat-cli] --> Server[Wenyan Server] --> Wechat[公众号 API]
 ```
 
 **适用于：**
@@ -163,7 +187,7 @@ flowchart LR
 客户端调用 Server 发布：
 
 ```bash
-wenyan publish -f article.md --server https://api.example.com --api-key your-api-key
+dreamai-wechat-cli publish -f article.md --server https://api.example.com --api-key your-api-key
 ```
 
 ## 赞助

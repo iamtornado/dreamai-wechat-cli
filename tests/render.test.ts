@@ -80,7 +80,7 @@ describe("prepareRenderContext", () => {
     it("should load custom theme css if option provided", async () => {
         const input = "# Content";
         const cssContent = ".test { color: red; }";
-        const themePath = path.join(process.cwd(), `wenyan-test-theme-${Date.now()}.css`);
+        const themePath = path.join(process.cwd(), `dreamai-test-theme-${Date.now()}.css`);
         await fs.writeFile(themePath, cssContent, "utf-8");
         try {
             const { gzhContent } = await prepareRenderContext(
