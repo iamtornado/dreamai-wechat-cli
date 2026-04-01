@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import { Command } from "commander";
+import { readFile } from "node:fs/promises";
 import pkg from "../package.json" with { type: "json" };
 import {
     addTheme,
@@ -12,6 +13,15 @@ import {
     RenderOptions,
     ThemeOptions,
 } from "@wenyan-md/core/wrapper";
+import { getWechatAccessToken } from "./wechat/accessToken.js";
+import {
+    draftAdd,
+    draftBatchGet,
+    draftCount,
+    draftDelete,
+    draftGet,
+    draftUpdate,
+} from "./wechat/draftApi.js";
 import { getInputContent } from "./utils.js";
 
 export function createProgram(version: string = pkg.version): Command {
@@ -58,6 +68,123 @@ export function createProgram(version: string = pkg.version): Command {
                     const mediaId = await renderAndPublish(inputContent, options, getInputContent);
                     console.log(`发布成功，Media ID: ${mediaId}`);
                 }
+            });
+        });
+
+    const draftRoot = program.command("draft").description("微信公众号草稿箱（服务端 API 直连，与官方字段一致）");
+
+    draftRoot
+        .command("count")
+        .description("获取草稿总数 (draft/count)")
+        .option("--app-id <id>", "override WECHAT_APP_ID")
+        .option("--app-secret <secret>", "override WECHAT_APP_SECRET")
+        .action(async (opts: { appId?: string; appSecret?: string }) => {
+            await runCommandWrapper(async () => {
+                const token = await getWechatAccessToken({ appId: opts.appId, appSecret: opts.appSecret });
+                const n = await draftCount(token);
+                console.log(n);
+            });
+        });
+
+    draftRoot
+        .command("list")
+        .description("获取草稿列表 (draft/batchget)")
+        .option("-o, --offset <n>", "偏移量", "0")
+        .option("-c, --count <n>", "条数 1～20", "20")
+        .option("--include-content", "在结果中包含正文 HTML（no_content=0）", false)
+        .option("--app-id <id>", "override WECHAT_APP_ID")
+        .option("--app-secret <secret>", "override WECHAT_APP_SECRET")
+        .action(
+            async (opts: {
+                offset: string;
+                count: string;
+                includeContent: boolean;
+                appId?: string;
+                appSecret?: string;
+            }) => {
+                await runCommandWrapper(async () => {
+                    const token = await getWechatAccessToken({ appId: opts.appId, appSecret: opts.appSecret });
+                    const data = await draftBatchGet(token, {
+                        offset: parseInt(opts.offset, 10) || 0,
+                        count: parseInt(opts.count, 10) || 20,
+                        no_content: opts.includeContent ? 0 : 1,
+                    });
+                    console.log(JSON.stringify(data, null, 2));
+                });
+            },
+        );
+
+    draftRoot
+        .command("get")
+        .description("获取单篇草稿详情 (draft/get)")
+        .requiredOption("--media-id <id>", "草稿 media_id")
+        .option("--app-id <id>", "override WECHAT_APP_ID")
+        .option("--app-secret <secret>", "override WECHAT_APP_SECRET")
+        .action(async (opts: { mediaId: string; appId?: string; appSecret?: string }) => {
+            await runCommandWrapper(async () => {
+                const token = await getWechatAccessToken({ appId: opts.appId, appSecret: opts.appSecret });
+                const data = await draftGet(token, opts.mediaId);
+                console.log(JSON.stringify(data, null, 2));
+            });
+        });
+
+    draftRoot
+        .command("delete")
+        .description("删除草稿 (draft/delete)，不可恢复")
+        .requiredOption("--media-id <id>", "草稿 media_id")
+        .option("--app-id <id>", "override WECHAT_APP_ID")
+        .option("--app-secret <secret>", "override WECHAT_APP_SECRET")
+        .action(async (opts: { mediaId: string; appId?: string; appSecret?: string }) => {
+            await runCommandWrapper(async () => {
+                const token = await getWechatAccessToken({ appId: opts.appId, appSecret: opts.appSecret });
+                await draftDelete(token, opts.mediaId);
+                console.log("ok");
+            });
+        });
+
+    draftRoot
+        .command("update")
+        .description("更新草稿中的某一篇文章 (draft/update)")
+        .requiredOption("--media-id <id>", "草稿 media_id")
+        .requiredOption("--index <n>", "多图文中的位置，首篇为 0")
+        .requiredOption("-f, --file <path>", "单篇 articles 对象的 JSON 文件（对应官方 Body.articles）")
+        .option("--app-id <id>", "override WECHAT_APP_ID")
+        .option("--app-secret <secret>", "override WECHAT_APP_SECRET")
+        .action(
+            async (opts: { mediaId: string; index: string; file: string; appId?: string; appSecret?: string }) => {
+                await runCommandWrapper(async () => {
+                    const raw = await readFile(opts.file, "utf-8");
+                    const articles = JSON.parse(raw) as Record<string, unknown>;
+                    if (!articles || typeof articles !== "object") {
+                        throw new Error("JSON 须为 articles 对象");
+                    }
+                    const token = await getWechatAccessToken({ appId: opts.appId, appSecret: opts.appSecret });
+                    await draftUpdate(token, {
+                        media_id: opts.mediaId,
+                        index: parseInt(opts.index, 10),
+                        articles,
+                    });
+                    console.log("ok");
+                });
+            },
+        );
+
+    draftRoot
+        .command("add")
+        .description("按原始 JSON 新增草稿 (draft/add)，需自行准备 thumb_media_id 等")
+        .requiredOption("-f, --file <path>", "含 articles 数组的请求体 JSON，参见官方「新增草稿」")
+        .option("--app-id <id>", "override WECHAT_APP_ID")
+        .option("--app-secret <secret>", "override WECHAT_APP_SECRET")
+        .action(async (opts: { file: string; appId?: string; appSecret?: string }) => {
+            await runCommandWrapper(async () => {
+                const raw = await readFile(opts.file, "utf-8");
+                const body = JSON.parse(raw) as { articles?: unknown };
+                if (!Array.isArray(body.articles)) {
+                    throw new Error("JSON 须包含 articles 数组");
+                }
+                const token = await getWechatAccessToken({ appId: opts.appId, appSecret: opts.appSecret });
+                const { media_id } = await draftAdd(token, body.articles as Record<string, unknown>[]);
+                console.log(media_id);
             });
         });
 

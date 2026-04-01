@@ -5,6 +5,8 @@ import crypto from "node:crypto";
 import { configDir } from "@wenyan-md/core/wrapper";
 import multer from "multer";
 import { publishToWechatDraft } from "@wenyan-md/core/publish";
+import { getWechatAccessToken } from "../wechat/accessToken.js";
+import { draftAdd, draftBatchGet, draftCount, draftDelete, draftGet, draftUpdate } from "../wechat/draftApi.js";
 
 export interface ServeOptions {
     port?: number;
@@ -156,6 +158,61 @@ export async function serveCommand(options: ServeOptions) {
         }
     });
 
+    // --- 草稿箱原始 API（需配置 WECHAT_APP_* 环境变量）---
+    app.get("/draft/count", auth, async (_req: Request, res: Response) => {
+        const token = await getWechatAccessToken();
+        const total_count = await draftCount(token);
+        res.json({ total_count });
+    });
+
+    app.post("/draft/batchget", auth, async (req: Request, res: Response) => {
+        const token = await getWechatAccessToken();
+        const offset = typeof req.body?.offset === "number" ? req.body.offset : parseInt(String(req.body?.offset ?? "0"), 10);
+        const count = typeof req.body?.count === "number" ? req.body.count : parseInt(String(req.body?.count ?? "20"), 10);
+        const no_content =
+            typeof req.body?.no_content === "number" ? req.body.no_content : parseInt(String(req.body?.no_content ?? "1"), 10);
+        const data = await draftBatchGet(token, { offset, count, no_content });
+        res.json(data);
+    });
+
+    app.post("/draft/get", auth, async (req: Request, res: Response) => {
+        const media_id = req.body?.media_id as string | undefined;
+        if (!media_id) throw new AppError("缺少 media_id");
+        const token = await getWechatAccessToken();
+        const data = await draftGet(token, media_id);
+        res.json(data);
+    });
+
+    app.post("/draft/delete", auth, async (req: Request, res: Response) => {
+        const media_id = req.body?.media_id as string | undefined;
+        if (!media_id) throw new AppError("缺少 media_id");
+        const token = await getWechatAccessToken();
+        await draftDelete(token, media_id);
+        res.json({ errcode: 0, errmsg: "ok" });
+    });
+
+    app.post("/draft/update", auth, async (req: Request, res: Response) => {
+        const { media_id, index, articles } = req.body ?? {};
+        if (!media_id || index === undefined || articles === null || typeof articles !== "object") {
+            throw new AppError("缺少 media_id、index 或 articles");
+        }
+        const token = await getWechatAccessToken();
+        await draftUpdate(token, {
+            media_id: String(media_id),
+            index: typeof index === "number" ? index : parseInt(String(index), 10),
+            articles: articles as Record<string, unknown>,
+        });
+        res.json({ errcode: 0, errmsg: "ok" });
+    });
+
+    app.post("/draft/add", auth, async (req: Request, res: Response) => {
+        const { articles } = req.body ?? {};
+        if (!Array.isArray(articles)) throw new AppError("缺少 articles 数组");
+        const token = await getWechatAccessToken();
+        const { media_id } = await draftAdd(token, articles as Record<string, unknown>[]);
+        res.json({ media_id });
+    });
+
     // 上传接口
     app.post("/upload", auth, upload.single("file"), async (req: Request, res: Response) => {
         if (!req.file) {
@@ -184,6 +241,7 @@ export async function serveCommand(options: ServeOptions) {
             console.log(`鉴权探针：http://localhost:${port}/verify`);
             console.log(`发布接口：POST http://localhost:${port}/publish`);
             console.log(`上传接口：POST http://localhost:${port}/upload`);
+            console.log(`草稿：GET /draft/count · POST /draft/batchget · /draft/get · /draft/delete · /draft/update · /draft/add`);
         });
 
         server.on("error", (err: any) => {

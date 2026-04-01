@@ -2,13 +2,17 @@
     <img alt="logo" src="https://raw.githubusercontent.com/caol64/wenyan/main/Data/256-mac.png" width="128" />
 </div>
 
-# 文颜 CLI
+# 文颜 CLI（DreamAI 分支）
 
 [![npm](https://img.shields.io/npm/v/@wenyan-md/cli)](https://www.npmjs.com/package/@wenyan-md/cli)
-[![License](https://img.shields.io/github/license/caol64/wenyan-cli)](LICENSE)
+[![License](https://img.shields.io/github/license/iamtornado/dreamai-wechat-cli)](LICENSE)
 ![NPM Downloads](https://img.shields.io/npm/dm/%40wenyan-md%2Fcli)
 [![Docker Pulls](https://img.shields.io/docker/pulls/caol64/wenyan-cli)](https://hub.docker.com/r/caol64/wenyan-cli)
-[![Stars](https://img.shields.io/github/stars/caol64/wenyan-cli?style=social)](https://github.com/caol64/wenyan-cli)
+[![Stars](https://img.shields.io/github/stars/iamtornado/dreamai-wechat-cli?style=social)](https://github.com/iamtornado/dreamai-wechat-cli)
+
+## 本仓库与上游
+
+本仓库 **[dreamai-wechat-cli](https://github.com/iamtornado/dreamai-wechat-cli)** 是在上游 **[caol64/wenyan-cli](https://github.com/caol64/wenyan-cli)** 基础上的独立开发分支：Issue、PR 与发布节奏与上游分离；功能与命令仍基于文颜 CLI。使用上游已发布的 npm / Docker 镜像时，版本信息仍以上游为准。
 
 ## 简介
 
@@ -27,7 +31,7 @@
 
 -   [macOS App Store 版](https://github.com/caol64/wenyan) - MAC 桌面应用
 -   [跨平台桌面版](https://github.com/caol64/wenyan-pc) - Windows/Linux
--   👉[CLI 版本](https://github.com/caol64/wenyan-cli) - 本项目
+-   👉[CLI 版本（上游）](https://github.com/caol64/wenyan-cli) — 本仓库为其独立分支：[dreamai-wechat-cli](https://github.com/iamtornado/dreamai-wechat-cli)
 -   [MCP 版本](https://github.com/caol64/wenyan-mcp) - AI 自动发文
 
 ## 特性
@@ -43,11 +47,13 @@
 ## 快速开始
 
 ```bash
-# 安装
-npm install -g @wenyan-md/cli
+# 安装（推荐使用 pnpm）
+pnpm add -g @wenyan-md/cli
 # 发布文章到公众号
 wenyan publish -f article.md
 ```
+
+从本仓库源码参与开发时，请先 `pnpm install` 再 `pnpm build`，详见仓库内脚本与文档。
 
 ## 命令概览
 

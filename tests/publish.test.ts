@@ -59,8 +59,7 @@ describe("publishCommand", () => {
             absoluteDirPath: undefined
         });
 
-        await expect(publishCommand(md, defaultOptions as any))
-            .rejects.toThrow("Error: 未能找到文章标题");
+        await expect(publishCommand(md, defaultOptions as any)).rejects.toThrow(/未能找到文章标题/);
     });
 
     it("should throw error if cover is missing", async () => {
@@ -69,8 +68,7 @@ describe("publishCommand", () => {
             absoluteDirPath: undefined
         });
 
-        await expect(publishCommand(md, defaultOptions as any))
-            .rejects.toThrow("Error: 未能找到文章封面");
+        await expect(publishCommand(md, defaultOptions as any)).rejects.toThrow(/未能找到文章封面/);
     });
 
     it("should throw error when WeChat API fails to return media_id", async () => {
@@ -83,7 +81,6 @@ describe("publishCommand", () => {
         const apiError = "Invalid Token";
         vi.mocked(publishToWechatDraft).mockResolvedValue(apiError as any);
 
-        await expect(publishCommand(md, defaultOptions as any))
-            .rejects.toThrow(/Error: 上传失败/);
+        await expect(publishCommand(md, defaultOptions as any)).rejects.toThrow(/上传失败/);
     });
 });

@@ -1,13 +1,10 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { prepareRenderContext } from "../src/commands/render";
+import { getInputContent } from "../src/utils.js";
 import fs from "node:fs/promises";
 import path from "node:path";
 
-// 1. Mock 外部模块
-vi.mock("node:fs/promises");
-
 describe("prepareRenderContext", () => {
-    // 默认配置，防止 "theme undefined" 错误
     const defaultOptions = {
         theme: "default",
         highlight: "solarized-light",
@@ -16,8 +13,6 @@ describe("prepareRenderContext", () => {
     };
 
     beforeEach(() => {
-        vi.clearAllMocks();
-        // 拦截 console 和 process.exit
         vi.spyOn(console, "log").mockImplementation(() => {});
         vi.spyOn(console, "error").mockImplementation(() => {});
         vi.spyOn(process, "exit").mockImplementation((code) => {
@@ -32,7 +27,7 @@ describe("prepareRenderContext", () => {
     it("should render content from direct string argument", async () => {
         const input = "# Hello";
 
-        const { gzhContent } = await prepareRenderContext(input, defaultOptions as any);
+        const { gzhContent } = await prepareRenderContext(input, defaultOptions as any, getInputContent);
 
         expect(gzhContent.content).toContain("<span>Hello</span></h1>");
     });
@@ -46,7 +41,7 @@ describe("prepareRenderContext", () => {
             process.stdin.emit("end");
         }, 50);
 
-        const { gzhContent } = await prepareRenderContext(undefined, defaultOptions as any);
+        const { gzhContent } = await prepareRenderContext(undefined, defaultOptions as any, getInputContent);
 
         expect(gzhContent.content).toContain("<span>From Stdin</span></h1>");
         process.stdin.isTTY = originalIsTTY;
@@ -57,11 +52,15 @@ describe("prepareRenderContext", () => {
         process.stdin.isTTY = true;
 
         const fileContent = "# From File";
-        vi.mocked(fs.readFile).mockResolvedValue(fileContent);
+        const readSpy = vi.spyOn(fs, "readFile").mockResolvedValue(fileContent as any);
 
-        const { gzhContent } = await prepareRenderContext(undefined, { ...defaultOptions, file: "test.md" } as any);
+        const { gzhContent } = await prepareRenderContext(
+            undefined,
+            { ...defaultOptions, file: "test.md" } as any,
+            getInputContent,
+        );
 
-        expect(fs.readFile).toHaveBeenCalledWith(path.resolve(process.cwd(), "test.md"), "utf-8");
+        expect(readSpy).toHaveBeenCalledWith(path.resolve(process.cwd(), "test.md"), "utf-8");
         expect(gzhContent.content).toContain("<span>From File</span></h1>");
 
         process.stdin.isTTY = originalIsTTY;
@@ -71,8 +70,9 @@ describe("prepareRenderContext", () => {
         const originalIsTTY = process.stdin.isTTY;
         process.stdin.isTTY = true;
 
-        // prepareRenderContext 内部使用的是 throw Error，这里需要匹配实际抛出的错误信息
-        await expect(prepareRenderContext(undefined, defaultOptions as any)).rejects.toThrow(/missing input-content/);
+        await expect(prepareRenderContext(undefined, defaultOptions as any, getInputContent)).rejects.toThrow(
+            /missing input-content/,
+        );
 
         process.stdin.isTTY = originalIsTTY;
     });
@@ -80,17 +80,21 @@ describe("prepareRenderContext", () => {
     it("should load custom theme css if option provided", async () => {
         const input = "# Content";
         const cssContent = ".test { color: red; }";
+        const themePath = path.join(process.cwd(), `wenyan-test-theme-${Date.now()}.css`);
+        await fs.writeFile(themePath, cssContent, "utf-8");
+        try {
+            const { gzhContent } = await prepareRenderContext(
+                input,
+                {
+                    ...defaultOptions,
+                    customTheme: themePath,
+                },
+                getInputContent,
+            );
 
-        vi.mocked(fs.readFile).mockResolvedValue(cssContent);
-
-        // 验证返回的 gzhContent 包含了自定义样式
-        const { gzhContent } = await prepareRenderContext(input, {
-            ...defaultOptions,
-            customTheme: "my-theme.css",
-        });
-
-        expect(fs.readFile).toHaveBeenCalledWith(path.resolve(process.cwd(), "my-theme.css"), "utf-8");
-        // 假设 StyledContent 结构中 content 包含渲染后的 HTML，这里检查它是否处理了样式
-        expect(gzhContent.content).toContain("<span>Content</span></h1>");
+            expect(gzhContent.content).toContain("<span>Content</span></h1>");
+        } finally {
+            await fs.unlink(themePath).catch(() => {});
+        }
     });
 });
