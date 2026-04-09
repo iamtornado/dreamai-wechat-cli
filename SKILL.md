@@ -6,16 +6,10 @@
 
 ## 安装 dreamai-wechat-cli
 
-从本仓库（GitHub）：
+从 npm registry 安装：
 
 ```bash
-npm install -g github:iamtornado/dreamai-wechat-cli
-```
-
-或使用上游已发布的包（二进制名仍为上游自带的 `wenyan`，与本文档命令名不同）：
-
-```bash
-npm install -g @wenyan-md/cli
+npm install -g @tornadoami/dreamai-wechat-cli
 ```
 
 确认安装成功：
@@ -44,6 +38,7 @@ dreamai-wechat-cli publish [options]
 | --no-footnote  | -  | 禁用脚注转换             | 否  | 启用              |
 | --server       | -  | Wenyan Server 地址   | 否  | -               |
 | --api-key      | -  | Server API Key     | 否² | -               |
+| --debug        | -  | 输出诊断日志到 stderr（或使用 `DREAMAI_WECHAT_DEBUG=1`） | 否  | 关闭              |
 | --help         | -  | 查看帮助               | 否  | -               |
 
 ### 从本地文件读取并发布
@@ -90,7 +85,7 @@ dreamai-wechat-cli theme -l
 
 ## Frontmatter 要求
 
-必须在 Markdown 顶部包含一段 frontmatter：
+建议在 Markdown 顶部包含一段 frontmatter：
 
 ```
 ---
@@ -114,6 +109,7 @@ source_url: https://example.com
 
 * 如果未指定 cover，将自动使用正文第一张图片作为封面
 * cover 支持本地路径和网络 URL
+* 发布成功前，最终内容仍需包含有效 `title` 与 `cover`（`cover` 可由渲染流程自动推导）
 
 ## 常见问题
 
@@ -141,3 +137,15 @@ source_url: https://example.com
 WECHAT_APP_ID
 WECHAT_APP_SECRET
 ```
+
+### 疑似重复草稿 / 需要排查发布过程
+
+可开启诊断日志：
+
+```bash
+dreamai-wechat-cli publish -f article.md --debug
+# 或
+DREAMAI_WECHAT_DEBUG=1 dreamai-wechat-cli publish -f article.md
+```
+
+`draft` 子命令同样支持 `--debug`。
