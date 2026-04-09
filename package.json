@@ -1,8 +1,8 @@
 {
-  "name": "@wenyan-md/cli",
+  "name": "@tornadoami/dreamai-wechat-cli",
   "version": "2.0.1",
   "description": "dreamai-wechat-cli — WeChat OA markdown render & draft publishing (Wenyan fork)",
-  "author": "Lei <caol64@gmail.com> (https://github.com/caol64)",
+  "author": "iamtornado",
   "license": "Apache-2.0",
   "keywords": [
     "公众号",
@@ -23,13 +23,13 @@
   "files": [
     "dist"
   ],
-  "homepage": "https://github.com/caol64/wenyan-cli#readme",
+  "homepage": "https://github.com/iamtornado/dreamai-wechat-cli#readme",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/caol64/wenyan-cli.git"
+    "url": "git+https://github.com/iamtornado/dreamai-wechat-cli.git"
   },
   "bugs": {
-    "url": "https://github.com/caol64/wenyan-cli/issues"
+    "url": "https://github.com/iamtornado/dreamai-wechat-cli/issues"
   },
   "scripts": {
     "build": "tsc",

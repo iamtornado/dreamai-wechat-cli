@@ -8,11 +8,11 @@ import {
     listThemes,
     prepareRenderContext,
     removeTheme,
-    renderAndPublish,
-    renderAndPublishToServer,
     RenderOptions,
     ThemeOptions,
 } from "@wenyan-md/core/wrapper";
+import { createDebugLog, maskWechatAppId, resolveDebug } from "./debug.js";
+import { publishLocalWithDebug, publishServerWithDebug } from "./publishWithDebug.js";
 import { getWechatAccessToken } from "./wechat/accessToken.js";
 import {
     draftAdd,
@@ -45,7 +45,12 @@ export function createProgram(version: string = pkg.version): Command {
             .option("--mac-style", "display codeblock with mac style", true)
             .option("--no-mac-style", "disable mac style")
             .option("--footnote", "convert link to footnote", true)
-            .option("--no-footnote", "disable footnote");
+            .option("--no-footnote", "disable footnote")
+            .option(
+                "--debug",
+                "将诊断信息写入 stderr（供排查重复草稿/发布失败；也可设环境变量 DREAMAI_WECHAT_DEBUG=1）",
+                false,
+            );
     };
 
     const pubCmd = program
@@ -58,14 +63,13 @@ export function createProgram(version: string = pkg.version): Command {
         .option("--api-key <apiKey>", "API key for the remote server")
         .action(async (inputContent: string | undefined, options: ClientPublishOptions) => {
             await runCommandWrapper(async () => {
-                // 如果传入了 --server，则走客户端（远程）模式
+                const debug = resolveDebug((options as ClientPublishOptions & { debug?: boolean }).debug);
                 if (options.server) {
-                    options.clientVersion = version; // 将 CLI 版本传递给服务器，便于调试和兼容性处理
-                    const mediaId = await renderAndPublishToServer(inputContent, options, getInputContent);
+                    options.clientVersion = version;
+                    const mediaId = await publishServerWithDebug(inputContent, options, getInputContent, debug);
                     console.log(`发布成功，Media ID: ${mediaId}`);
                 } else {
-                    // 走原有的本地直接发布模式
-                    const mediaId = await renderAndPublish(inputContent, options, getInputContent);
+                    const mediaId = await publishLocalWithDebug(inputContent, options, getInputContent, debug);
                     console.log(`发布成功，Media ID: ${mediaId}`);
                 }
             });
@@ -78,10 +82,15 @@ export function createProgram(version: string = pkg.version): Command {
         .description("获取草稿总数 (draft/count)")
         .option("--app-id <id>", "override WECHAT_APP_ID")
         .option("--app-secret <secret>", "override WECHAT_APP_SECRET")
-        .action(async (opts: { appId?: string; appSecret?: string }) => {
+        .option("--debug", "诊断输出到 stderr（或 DREAMAI_WECHAT_DEBUG=1）", false)
+        .action(async (opts: { appId?: string; appSecret?: string; debug?: boolean }) => {
             await runCommandWrapper(async () => {
+                const log = createDebugLog(resolveDebug(opts.debug));
+                log.phase("draft_count_begin", { appIdMasked: maskWechatAppId(opts.appId) });
+                const t0 = Date.now();
                 const token = await getWechatAccessToken({ appId: opts.appId, appSecret: opts.appSecret });
                 const n = await draftCount(token);
+                log.phase("draft_count_end", { ms: Date.now() - t0, total_count: n });
                 console.log(n);
             });
         });
@@ -94,6 +103,7 @@ export function createProgram(version: string = pkg.version): Command {
         .option("--include-content", "在结果中包含正文 HTML（no_content=0）", false)
         .option("--app-id <id>", "override WECHAT_APP_ID")
         .option("--app-secret <secret>", "override WECHAT_APP_SECRET")
+        .option("--debug", "诊断输出到 stderr（或 DREAMAI_WECHAT_DEBUG=1）", false)
         .action(
             async (opts: {
                 offset: string;
@@ -101,13 +111,22 @@ export function createProgram(version: string = pkg.version): Command {
                 includeContent: boolean;
                 appId?: string;
                 appSecret?: string;
+                debug?: boolean;
             }) => {
                 await runCommandWrapper(async () => {
+                    const log = createDebugLog(resolveDebug(opts.debug));
+                    const offset = parseInt(opts.offset, 10) || 0;
+                    const count = parseInt(opts.count, 10) || 20;
+                    const no_content = opts.includeContent ? 0 : 1;
+                    log.phase("draft_batchget_begin", { offset, count, no_content, appIdMasked: maskWechatAppId(opts.appId) });
+                    const t0 = Date.now();
                     const token = await getWechatAccessToken({ appId: opts.appId, appSecret: opts.appSecret });
-                    const data = await draftBatchGet(token, {
-                        offset: parseInt(opts.offset, 10) || 0,
-                        count: parseInt(opts.count, 10) || 20,
-                        no_content: opts.includeContent ? 0 : 1,
+                    const data = await draftBatchGet(token, { offset, count, no_content });
+                    log.phase("draft_batchget_end", {
+                        ms: Date.now() - t0,
+                        total_count: data.total_count,
+                        item_count: data.item_count,
+                        mediaIds: data.item?.map((i) => i.media_id) ?? [],
                     });
                     console.log(JSON.stringify(data, null, 2));
                 });
@@ -120,10 +139,20 @@ export function createProgram(version: string = pkg.version): Command {
         .requiredOption("--media-id <id>", "草稿 media_id")
         .option("--app-id <id>", "override WECHAT_APP_ID")
         .option("--app-secret <secret>", "override WECHAT_APP_SECRET")
-        .action(async (opts: { mediaId: string; appId?: string; appSecret?: string }) => {
+        .option("--debug", "诊断输出到 stderr（或 DREAMAI_WECHAT_DEBUG=1）", false)
+        .action(async (opts: { mediaId: string; appId?: string; appSecret?: string; debug?: boolean }) => {
             await runCommandWrapper(async () => {
+                const log = createDebugLog(resolveDebug(opts.debug));
+                log.phase("draft_get_begin", { media_id: opts.mediaId, appIdMasked: maskWechatAppId(opts.appId) });
+                const t0 = Date.now();
                 const token = await getWechatAccessToken({ appId: opts.appId, appSecret: opts.appSecret });
                 const data = await draftGet(token, opts.mediaId);
+                const titles = data.news_item?.map((n) => (typeof n.title === "string" ? n.title : null)) ?? [];
+                log.phase("draft_get_end", {
+                    ms: Date.now() - t0,
+                    newsItemCount: data.news_item?.length ?? 0,
+                    titles,
+                });
                 console.log(JSON.stringify(data, null, 2));
             });
         });
@@ -134,10 +163,15 @@ export function createProgram(version: string = pkg.version): Command {
         .requiredOption("--media-id <id>", "草稿 media_id")
         .option("--app-id <id>", "override WECHAT_APP_ID")
         .option("--app-secret <secret>", "override WECHAT_APP_SECRET")
-        .action(async (opts: { mediaId: string; appId?: string; appSecret?: string }) => {
+        .option("--debug", "诊断输出到 stderr（或 DREAMAI_WECHAT_DEBUG=1）", false)
+        .action(async (opts: { mediaId: string; appId?: string; appSecret?: string; debug?: boolean }) => {
             await runCommandWrapper(async () => {
+                const log = createDebugLog(resolveDebug(opts.debug));
+                log.phase("draft_delete_begin", { media_id: opts.mediaId, appIdMasked: maskWechatAppId(opts.appId) });
+                const t0 = Date.now();
                 const token = await getWechatAccessToken({ appId: opts.appId, appSecret: opts.appSecret });
                 await draftDelete(token, opts.mediaId);
+                log.phase("draft_delete_end", { ms: Date.now() - t0 });
                 console.log("ok");
             });
         });
@@ -150,20 +184,40 @@ export function createProgram(version: string = pkg.version): Command {
         .requiredOption("-f, --file <path>", "单篇 articles 对象的 JSON 文件（对应官方 Body.articles）")
         .option("--app-id <id>", "override WECHAT_APP_ID")
         .option("--app-secret <secret>", "override WECHAT_APP_SECRET")
+        .option("--debug", "诊断输出到 stderr（或 DREAMAI_WECHAT_DEBUG=1）", false)
         .action(
-            async (opts: { mediaId: string; index: string; file: string; appId?: string; appSecret?: string }) => {
+            async (opts: {
+                mediaId: string;
+                index: string;
+                file: string;
+                appId?: string;
+                appSecret?: string;
+                debug?: boolean;
+            }) => {
                 await runCommandWrapper(async () => {
+                    const log = createDebugLog(resolveDebug(opts.debug));
                     const raw = await readFile(opts.file, "utf-8");
                     const articles = JSON.parse(raw) as Record<string, unknown>;
                     if (!articles || typeof articles !== "object") {
                         throw new Error("JSON 须为 articles 对象");
                     }
+                    const idx = parseInt(opts.index, 10);
+                    log.phase("draft_update_begin", {
+                        media_id: opts.mediaId,
+                        index: idx,
+                        file: opts.file,
+                        articleTitle: typeof articles.title === "string" ? articles.title : null,
+                        jsonBytes: raw.length,
+                        appIdMasked: maskWechatAppId(opts.appId),
+                    });
+                    const t0 = Date.now();
                     const token = await getWechatAccessToken({ appId: opts.appId, appSecret: opts.appSecret });
                     await draftUpdate(token, {
                         media_id: opts.mediaId,
-                        index: parseInt(opts.index, 10),
+                        index: idx,
                         articles,
                     });
+                    log.phase("draft_update_end", { ms: Date.now() - t0 });
                     console.log("ok");
                 });
             },
@@ -175,15 +229,28 @@ export function createProgram(version: string = pkg.version): Command {
         .requiredOption("-f, --file <path>", "含 articles 数组的请求体 JSON，参见官方「新增草稿」")
         .option("--app-id <id>", "override WECHAT_APP_ID")
         .option("--app-secret <secret>", "override WECHAT_APP_SECRET")
-        .action(async (opts: { file: string; appId?: string; appSecret?: string }) => {
+        .option("--debug", "诊断输出到 stderr（或 DREAMAI_WECHAT_DEBUG=1）", false)
+        .action(async (opts: { file: string; appId?: string; appSecret?: string; debug?: boolean }) => {
             await runCommandWrapper(async () => {
+                const log = createDebugLog(resolveDebug(opts.debug));
                 const raw = await readFile(opts.file, "utf-8");
                 const body = JSON.parse(raw) as { articles?: unknown };
                 if (!Array.isArray(body.articles)) {
                     throw new Error("JSON 须包含 articles 数组");
                 }
+                const arts = body.articles as Record<string, unknown>[];
+                log.hint("draft/add 每次成功都会新建一篇草稿；同一 JSON 多次执行会得到多个 media_id。");
+                log.phase("draft_add_begin", {
+                    file: opts.file,
+                    jsonBytes: raw.length,
+                    articleCount: arts.length,
+                    firstTitles: arts.map((a) => (typeof a.title === "string" ? a.title : null)),
+                    appIdMasked: maskWechatAppId(opts.appId),
+                });
+                const t0 = Date.now();
                 const token = await getWechatAccessToken({ appId: opts.appId, appSecret: opts.appSecret });
-                const { media_id } = await draftAdd(token, body.articles as Record<string, unknown>[]);
+                const { media_id } = await draftAdd(token, arts);
+                log.phase("draft_add_end", { ms: Date.now() - t0, media_id });
                 console.log(media_id);
             });
         });
@@ -192,7 +259,20 @@ export function createProgram(version: string = pkg.version): Command {
 
     addCommonOptions(renderCmd).action(async (inputContent: string | undefined, options: RenderOptions) => {
         await runCommandWrapper(async () => {
+            const debug = resolveDebug((options as RenderOptions & { debug?: boolean }).debug);
+            const log = createDebugLog(debug);
+            log.phase("render_begin", {
+                file: options.file ?? null,
+                hasInline: Boolean(inputContent?.length),
+                theme: options.theme,
+            });
+            const t0 = Date.now();
             const { gzhContent } = await prepareRenderContext(inputContent, options, getInputContent);
+            log.phase("render_done", {
+                ms: Date.now() - t0,
+                title: gzhContent.title ?? null,
+                htmlChars: (gzhContent.content ?? "").length,
+            });
             console.log(gzhContent.content);
         });
     });
@@ -261,6 +341,10 @@ async function runCommandWrapper(action: () => Promise<void>) {
     try {
         await action();
     } catch (error) {
+        if (resolveDebug(false)) {
+            const msg = error instanceof Error ? error.stack ?? error.message : String(error);
+            console.error("[dreamai-wechat-cli debug] fatal:", msg);
+        }
         if (error instanceof Error) {
             console.error(error.message);
         } else {

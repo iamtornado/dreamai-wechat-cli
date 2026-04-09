@@ -11,7 +11,7 @@
 
 **[dreamai-wechat-cli](https://github.com/iamtornado/dreamai-wechat-cli)** 是基于上游 **[caol64/wenyan-cli](https://github.com/caol64/wenyan-cli)**（[文颜](https://wenyan.yuzhi.tech) 的命令行工具）的 **独立维护分支**，且 **仅包含 CLI**（命令行 + 可选 `serve` HTTP 服务）：不提供 macOS / Windows 桌面应用或 MCP 安装包，那些由文颜其它仓库维护，见官网说明。
 
-- 本仓库 **当前未以独立包名发布到 npm**；安装方式见下文「快速开始」（从 GitHub 安装）。
+- 本仓库以独立包名 **`@tornadoami/dreamai-wechat-cli`** 发布到 npm（并持续提供 GitHub 安装方式）。
 - 依赖中的 **`@wenyan-md/core` 仍从 npm registry 拉取**（上游核心库），与「本 fork 是否单独发包」不是一回事。
 - Issue、PR、迭代节奏与上游仓库分离；若使用上游已发布的 **`@wenyan-md/cli`**（全局命令为 `wenyan`），行为与版本以 npm 上游为准。
 
@@ -30,7 +30,19 @@
 
 ## 快速开始
 
-### 安装（推荐：从 GitHub）
+### 安装（npm）
+
+```bash
+pnpm add -g @tornadoami/dreamai-wechat-cli
+```
+
+安装后命令名为：
+
+```bash
+dreamai-wechat-cli --help
+```
+
+### 安装（GitHub）
 
 需 **Node.js 18+**，并能访问 GitHub 与 npm registry（用于安装依赖）。克隆后执行 `prepare` 时会运行 `tsc` 生成 `dist/`。
 
