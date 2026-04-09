@@ -33,7 +33,7 @@
 ### 安装（npm）
 
 ```bash
-pnpm add -g @tornadoami/dreamai-wechat-cli
+npm install -g @tornadoami/dreamai-wechat-cli
 ```
 
 安装后命令名为：
@@ -48,8 +48,6 @@ dreamai-wechat-cli --help
 
 ```bash
 npm install -g github:iamtornado/dreamai-wechat-cli
-# 或
-pnpm add -g github:iamtornado/dreamai-wechat-cli
 ```
 
 可将 `github:…` 改为指定分支或 tag，例如 `github:iamtornado/dreamai-wechat-cli#main`。
@@ -63,7 +61,7 @@ dreamai-wechat-cli publish -f article.md
 dreamai-wechat-cli draft --help
 ```
 
-从本仓库**克隆开发**时：请先 `pnpm install`；`prepare` / `pnpm build` 会生成 `dist/`。
+从本仓库**克隆开发**时：请先 `npm install`；`prepare` / `npm run build` 会生成 `dist/`。
 
 ## 命令概览
 
