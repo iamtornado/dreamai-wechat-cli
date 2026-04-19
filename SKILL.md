@@ -47,6 +47,32 @@ dreamai-wechat-cli publish [options]
 dreamai-wechat-cli publish -f article.md
 ```
 
+### 全员群发图文（高级接口）
+
+将已写入草稿箱的图文 `media_id` 提交为**全员**群发任务（微信 `message/mass/sendall`，`mpnews`）：
+
+```bash
+dreamai-wechat-cli mass sendall --media-id <上一步 publish 或 draft add 输出的 media_id>
+```
+
+按标签群发时增加 `--tag-id <数字>`。说明与限制见仓库内 [docs/mass.md](docs/mass.md) 与[官方文档](https://developers.weixin.qq.com/doc/subscription/api/notify/message/api_sendall.html)。
+
+### 合并多篇已有草稿再群发
+
+将多篇草稿合并为一篇多图文新草稿（内部多次 `draft/get` + 一次 `draft/add`），默认不删源草稿：
+
+```bash
+dreamai-wechat-cli draft merge-add --media-id <id1> --media-id <id2>
+```
+
+合并并立刻全员群发：
+
+```bash
+dreamai-wechat-cli draft merge-add --media-id <id1> --media-id <id2> --sendall
+```
+
+详见 [docs/draft-merge.md](docs/draft-merge.md)。
+
 ### 指定排版主题
 
 ```bash

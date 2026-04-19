@@ -7,6 +7,8 @@ import multer from "multer";
 import { publishToWechatDraft } from "@wenyan-md/core/publish";
 import { getWechatAccessToken } from "../wechat/accessToken.js";
 import { draftAdd, draftBatchGet, draftCount, draftDelete, draftGet, draftUpdate } from "../wechat/draftApi.js";
+import { massSendAllMpnews } from "../wechat/massApi.js";
+import { mergeDraftsAdd } from "../wechat/mergeDrafts.js";
 
 export interface ServeOptions {
     port?: number;
@@ -214,6 +216,85 @@ export async function serveCommand(options: ServeOptions) {
         res.json({ media_id });
     });
 
+    /** 合并多篇草稿为一篇多图文（多次 draft/get + draft/add）；可选群发 */
+    app.post("/draft/merge-add", auth, async (req: Request, res: Response) => {
+        const {
+            media_ids,
+            delete_sources,
+            sendall,
+            send_tag_id,
+            send_ignore_reprint,
+            clientmsgid,
+        } = req.body ?? {};
+        if (!Array.isArray(media_ids) || !media_ids.every((x: unknown) => typeof x === "string")) {
+            throw new AppError("缺少 media_ids 字符串数组");
+        }
+        const token = await getWechatAccessToken();
+        const merged = await mergeDraftsAdd(token, media_ids as string[], { deleteSources: Boolean(delete_sources) });
+        if (sendall) {
+            const sir =
+                send_ignore_reprint === undefined || send_ignore_reprint === null || send_ignore_reprint === ""
+                    ? 0
+                    : parseInt(String(send_ignore_reprint), 10);
+            if (sir !== 0 && sir !== 1) {
+                throw new AppError("send_ignore_reprint 只能为 0 或 1");
+            }
+            const tagNum =
+                send_tag_id === undefined || send_tag_id === null || send_tag_id === ""
+                    ? undefined
+                    : parseInt(String(send_tag_id), 10);
+            if (send_tag_id !== undefined && send_tag_id !== null && send_tag_id !== "" && Number.isNaN(tagNum!)) {
+                throw new AppError("send_tag_id 须为数字");
+            }
+            const mass = await massSendAllMpnews(token, {
+                mediaId: merged.media_id,
+                isToAll: tagNum === undefined,
+                tagId: tagNum,
+                sendIgnoreReprint: sir as 0 | 1,
+                clientmsgid: typeof clientmsgid === "string" ? clientmsgid : undefined,
+            });
+            res.json({
+                merged_media_id: merged.media_id,
+                articleCount: merged.articleCount,
+                mass_sendall: mass,
+            });
+            return;
+        }
+        res.json({ media_id: merged.media_id, articleCount: merged.articleCount });
+    });
+
+    /** 全员或按标签群发图文（message/mass/sendall，msgtype=mpnews） */
+    app.post("/mass/sendall", auth, async (req: Request, res: Response) => {
+        const { media_id, tag_id, send_ignore_reprint, clientmsgid } = req.body ?? {};
+        if (!media_id || typeof media_id !== "string") throw new AppError("缺少 media_id");
+        const isToAll = tag_id === undefined || tag_id === null || tag_id === "";
+        const tagId =
+            !isToAll && typeof tag_id === "number"
+                ? tag_id
+                : !isToAll
+                  ? parseInt(String(tag_id), 10)
+                  : undefined;
+        if (!isToAll && Number.isNaN(tagId!)) {
+            throw new AppError("tag_id 须为数字");
+        }
+        const sir =
+            send_ignore_reprint === undefined || send_ignore_reprint === null || send_ignore_reprint === ""
+                ? 0
+                : parseInt(String(send_ignore_reprint), 10);
+        if (sir !== 0 && sir !== 1) {
+            throw new AppError("send_ignore_reprint 只能为 0 或 1");
+        }
+        const token = await getWechatAccessToken();
+        const result = await massSendAllMpnews(token, {
+            mediaId: media_id,
+            isToAll,
+            tagId,
+            sendIgnoreReprint: sir as 0 | 1,
+            clientmsgid: typeof clientmsgid === "string" ? clientmsgid : undefined,
+        });
+        res.json(result);
+    });
+
     // 上传接口
     app.post("/upload", auth, upload.single("file"), async (req: Request, res: Response) => {
         if (!req.file) {
@@ -242,7 +323,10 @@ export async function serveCommand(options: ServeOptions) {
             console.log(`鉴权探针：http://localhost:${port}/verify`);
             console.log(`发布接口：POST http://localhost:${port}/publish`);
             console.log(`上传接口：POST http://localhost:${port}/upload`);
-            console.log(`草稿：GET /draft/count · POST /draft/batchget · /draft/get · /draft/delete · /draft/update · /draft/add`);
+            console.log(
+                `草稿：GET /draft/count · POST /draft/batchget · /draft/get · /draft/delete · /draft/update · /draft/add · /draft/merge-add`,
+            );
+            console.log(`群发：POST /mass/sendall（JSON：media_id；可选 tag_id、send_ignore_reprint、clientmsgid）`);
         });
 
         server.on("error", (err: any) => {

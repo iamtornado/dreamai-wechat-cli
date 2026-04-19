@@ -22,6 +22,8 @@ import {
     draftGet,
     draftUpdate,
 } from "./wechat/draftApi.js";
+import { massSendAllMpnews } from "./wechat/massApi.js";
+import { mergeDraftsAdd } from "./wechat/mergeDrafts.js";
 import { getInputContent } from "./utils.js";
 
 export function createProgram(version: string = pkg.version): Command {
@@ -224,6 +226,93 @@ export function createProgram(version: string = pkg.version): Command {
         );
 
     draftRoot
+        .command("merge-add")
+        .description("合并多篇已有草稿为一篇多图文新草稿（draft/get 各篇 news_item → draft/add）")
+        .requiredOption(
+            "--media-id <id>",
+            "源草稿 media_id；按选项出现顺序合并；可写多次，如 --media-id A --media-id B",
+            (value: string, prev: string[] | undefined) => (prev ?? []).concat(value),
+            [] as string[],
+        )
+        .option("--delete-sources", "合并成功且新草稿创建成功后，删除各源草稿（不可恢复）", false)
+        .option("--sendall", "合并成功后立即全员群发该新草稿（message/mass/sendall）", false)
+        .option("--send-tag-id <n>", "与 --sendall 同用：改为按该标签群发（非全员）")
+        .option("--send-ignore-reprint <0|1>", "群发参数 send_ignore_reprint（默认 0，仅 --sendall 时生效）", "0")
+        .option("--clientmsgid <id>", "群发去重 id（≤32 字节 UTF-8，仅 --sendall 时生效）")
+        .option("--app-id <id>", "override WECHAT_APP_ID")
+        .option("--app-secret <secret>", "override WECHAT_APP_SECRET")
+        .option("--debug", "诊断输出到 stderr（或 DREAMAI_WECHAT_DEBUG=1）", false)
+        .action(
+            async (opts: {
+                mediaId: string[];
+                deleteSources?: boolean;
+                sendall?: boolean;
+                sendTagId?: string;
+                sendIgnoreReprint: string;
+                clientmsgid?: string;
+                appId?: string;
+                appSecret?: string;
+                debug?: boolean;
+            }) => {
+                await runCommandWrapper(async () => {
+                    const log = createDebugLog(resolveDebug(opts.debug));
+                    const ids = opts.mediaId ?? [];
+                    if (ids.length === 0) {
+                        throw new Error("请至少提供一次 --media-id");
+                    }
+                    log.phase("draft_merge_add_begin", {
+                        sourceCount: ids.length,
+                        deleteSources: Boolean(opts.deleteSources),
+                        sendall: Boolean(opts.sendall),
+                        appIdMasked: maskWechatAppId(opts.appId),
+                    });
+                    const t0 = Date.now();
+                    const token = await getWechatAccessToken({ appId: opts.appId, appSecret: opts.appSecret });
+                    const merged = await mergeDraftsAdd(token, ids, { deleteSources: opts.deleteSources });
+                    log.phase("draft_merge_add_end", {
+                        ms: Date.now() - t0,
+                        media_id: merged.media_id,
+                        articleCount: merged.articleCount,
+                    });
+                    if (opts.sendall) {
+                        const sir = parseInt(opts.sendIgnoreReprint, 10);
+                        if (sir !== 0 && sir !== 1) {
+                            throw new Error("--send-ignore-reprint 只能为 0 或 1");
+                        }
+                        const sendTag =
+                            opts.sendTagId !== undefined && opts.sendTagId !== ""
+                                ? parseInt(opts.sendTagId, 10)
+                                : undefined;
+                        if (opts.sendTagId !== undefined && opts.sendTagId !== "" && Number.isNaN(sendTag!)) {
+                            throw new Error("--send-tag-id 须为数字");
+                        }
+                        const isToAll = sendTag === undefined;
+                        const mass = await massSendAllMpnews(token, {
+                            mediaId: merged.media_id,
+                            isToAll,
+                            tagId: sendTag,
+                            sendIgnoreReprint: sir as 0 | 1,
+                            clientmsgid: opts.clientmsgid,
+                        });
+                        console.log(
+                            JSON.stringify(
+                                {
+                                    merged_media_id: merged.media_id,
+                                    articleCount: merged.articleCount,
+                                    mass_sendall: mass,
+                                },
+                                null,
+                                2,
+                            ),
+                        );
+                    } else {
+                        console.log(merged.media_id);
+                    }
+                });
+            },
+        );
+
+    draftRoot
         .command("add")
         .description("按原始 JSON 新增草稿 (draft/add)，需自行准备 thumb_media_id 等")
         .requiredOption("-f, --file <path>", "含 articles 数组的请求体 JSON，参见官方「新增草稿」")
@@ -254,6 +343,64 @@ export function createProgram(version: string = pkg.version): Command {
                 console.log(media_id);
             });
         });
+
+    const massRoot = program.command("mass").description("微信群发（高级接口 message/mass/sendall，需认证号与 IP 白名单）");
+
+    massRoot
+        .command("sendall")
+        .description("群发图文 mpnews；默认全员，指定 --tag-id 则按标签群发")
+        .requiredOption("--media-id <id>", "图文的 media_id（如 publish / draft add 得到的草稿 id）")
+        .option("--tag-id <n>", "用户标签 tag_id；若指定则不再全员群发")
+        .option("--send-ignore-reprint <0|1>", "转载校验相关，参见官方 send_ignore_reprint（默认 0）", "0")
+        .option("--clientmsgid <id>", "可选，≤32 字节（UTF-8），24h 内相同则拒绝重复群发")
+        .option("--app-id <id>", "override WECHAT_APP_ID")
+        .option("--app-secret <secret>", "override WECHAT_APP_SECRET")
+        .option("--debug", "诊断输出到 stderr（或 DREAMAI_WECHAT_DEBUG=1）", false)
+        .action(
+            async (opts: {
+                mediaId: string;
+                tagId?: string;
+                sendIgnoreReprint: string;
+                clientmsgid?: string;
+                appId?: string;
+                appSecret?: string;
+                debug?: boolean;
+            }) => {
+                await runCommandWrapper(async () => {
+                    const log = createDebugLog(resolveDebug(opts.debug));
+                    const isToAll = opts.tagId === undefined;
+                    const tagId = opts.tagId !== undefined ? parseInt(opts.tagId, 10) : undefined;
+                    if (!isToAll && Number.isNaN(tagId!)) {
+                        throw new Error("--tag-id 须为数字");
+                    }
+                    const sir = parseInt(opts.sendIgnoreReprint, 10);
+                    if (sir !== 0 && sir !== 1) {
+                        throw new Error("--send-ignore-reprint 只能为 0 或 1");
+                    }
+                    log.phase("mass_sendall_begin", {
+                        is_to_all: isToAll,
+                        tag_id: tagId ?? null,
+                        media_id_prefix: opts.mediaId.slice(0, 8),
+                        appIdMasked: maskWechatAppId(opts.appId),
+                    });
+                    const t0 = Date.now();
+                    const token = await getWechatAccessToken({ appId: opts.appId, appSecret: opts.appSecret });
+                    const result = await massSendAllMpnews(token, {
+                        mediaId: opts.mediaId,
+                        isToAll,
+                        tagId,
+                        sendIgnoreReprint: sir as 0 | 1,
+                        clientmsgid: opts.clientmsgid,
+                    });
+                    log.phase("mass_sendall_end", {
+                        ms: Date.now() - t0,
+                        msg_id: result.msg_id,
+                        msg_data_id: result.msg_data_id ?? null,
+                    });
+                    console.log(JSON.stringify(result, null, 2));
+                });
+            },
+        );
 
     const renderCmd = program.command("render").description("Render a markdown file to styled HTML");
 
