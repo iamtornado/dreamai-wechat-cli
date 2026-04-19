@@ -31,11 +31,14 @@
   "bugs": {
     "url": "https://github.com/iamtornado/dreamai-wechat-cli/issues"
   },
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
     "build": "tsc",
     "prepare": "tsc",
-    "upgrade:core": "pnpm update @wenyan-md/core",
-    "prepublishOnly": "pnpm upgrade:core && pnpm build",
+    "upgrade:core": "npm update @wenyan-md/core",
+    "prepublishOnly": "npm run build",
     "server": "pnpm build && pnpm dotenv -e .env.test -- node ./dist/cli.js serve",
     "test:bin": "pnpm build && node ./dist/cli.js render -f tests/publish.md -c tests/manhua.css --no-mac-style",
     "test:cli": "vitest run tests/cli.test.ts",
