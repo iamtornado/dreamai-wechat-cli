@@ -1,6 +1,6 @@
 {
   "name": "@tornadoami/dreamai-wechat-cli",
-  "version": "2.0.1",
+  "version": "2.0.2",
   "description": "dreamai-wechat-cli — WeChat OA markdown render & draft publishing (Wenyan fork)",
   "author": "iamtornado",
   "license": "Apache-2.0",
