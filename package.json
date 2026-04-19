@@ -1,6 +1,6 @@
 {
   "name": "@tornadoami/dreamai-wechat-cli",
-  "version": "2.0.2",
+  "version": "2.0.3",
   "description": "dreamai-wechat-cli — WeChat OA markdown render & draft publishing (Wenyan fork)",
   "author": "iamtornado",
   "license": "Apache-2.0",
@@ -16,12 +16,13 @@
   ],
   "type": "module",
   "bin": {
-    "dreamai-wechat-cli": "./dist/cli.js"
+    "dreamai-wechat-cli": "bin/dreamai-wechat-cli.js"
   },
   "main": "./dist/index.js",
   "types": "./dist/types/index.d.ts",
   "files": [
-    "dist"
+    "dist",
+    "bin"
   ],
   "homepage": "https://github.com/iamtornado/dreamai-wechat-cli#readme",
   "repository": {
