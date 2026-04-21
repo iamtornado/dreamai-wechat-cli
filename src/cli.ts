@@ -25,6 +25,7 @@ import {
 import { massSendAllMpnews } from "./wechat/massApi.js";
 import { mergeDraftsAdd } from "./wechat/mergeDrafts.js";
 import { getInputContent } from "./utils.js";
+import { confirmUpdatePrompt, resolveRegistryVersion, runGlobalInstall } from "./update.js";
 
 export function createProgram(version: string = pkg.version): Command {
     const program = new Command();
@@ -401,6 +402,42 @@ export function createProgram(version: string = pkg.version): Command {
                 });
             },
         );
+
+    program
+        .command("update")
+        .description("自更新到 npm 最新版本（默认 latest）")
+        .option("--check", "仅检查可更新版本，不执行安装", false)
+        .option("-y, --yes", "跳过交互确认，直接执行更新", false)
+        .option("--to <versionOrTag>", "目标版本或 dist-tag（默认 latest）", "latest")
+        .action(async (opts: { check?: boolean; yes?: boolean; to?: string }) => {
+            await runCommandWrapper(async () => {
+                const target = (opts.to ?? "latest").trim() || "latest";
+                const latestVersion = await resolveRegistryVersion(pkg.name, target);
+
+                console.log(`当前版本: ${version}`);
+                console.log(`目标版本(${target}): ${latestVersion}`);
+
+                if (opts.check) {
+                    return;
+                }
+                if (latestVersion === version) {
+                    console.log("已是目标版本，无需更新。");
+                    return;
+                }
+
+                if (!opts.yes) {
+                    const confirmed = await confirmUpdatePrompt(`确认更新 ${pkg.name}：${version} -> ${latestVersion} ?`);
+                    if (!confirmed) {
+                        console.log("已取消更新。");
+                        return;
+                    }
+                }
+
+                console.log(`开始执行全局更新: ${pkg.name}@${target}`);
+                await runGlobalInstall(pkg.name, target);
+                console.log("更新完成。请重新打开终端后执行 dreamai-wechat-cli --version 进行确认。");
+            });
+        });
 
     const renderCmd = program.command("render").description("Render a markdown file to styled HTML");
 

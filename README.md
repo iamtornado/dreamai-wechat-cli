@@ -74,6 +74,7 @@ dreamai-wechat-cli <command> [options]
 | [publish](docs/publish.md) | 发布文章      |
 | [mass](docs/mass.md) | 高级群发：`mass sendall`（默认全员图文 `mpnews`） |
 | draft   | 草稿箱 API：`count` / `list` / `get` / `update` / `delete` / `add` / [`merge-add`](docs/draft-merge.md)（`dreamai-wechat-cli draft --help`） |
+| update  | CLI 自更新：`update` / `update --check` / `update --yes` |
 | render  | 渲染 HTML   |
 | [theme](docs/theme.md)   | 管理主题      |
 | [serve](docs/server.md)   | 启动 Server（含 `/draft/*` 与 `/publish` 等） |
