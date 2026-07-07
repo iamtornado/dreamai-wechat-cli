@@ -2,25 +2,28 @@
 
 ## 准备工作
 
-你需要准备一篇 Markdown 格式的文章，包含必要的 frontmatter（标题、封面等元数据）。如果文章内包含图片，确保图片路径正确且可访问，CLI 会自动上传图片到微信公众号素材库。
+**图文（`publish`）**：准备 Markdown 文章，含 frontmatter（标题、封面等）。CLI 会自动上传图片到微信素材库。
 
-## 安装 dreamai-wechat-cli
+**贴图（`newspic publish`，v2.1.0+）**：准备标题、描述文本与本地图片；**不需要 Markdown**。可用 `--from-dir` 从目录读取 `wechat_post.json` + 有序图片（如 `panel_01.png`…）。
 
-从 npm registry 安装：
+## 安装与升级
+
+从 **npm registry** 安装（下游集成请用全局 CLI，勿引用仓库 `dist/cli.js`）：
 
 ```bash
 npm install -g @tornadoami/dreamai-wechat-cli
-```
-
-确认安装成功：
-
-```bash
 dreamai-wechat-cli --version
 ```
 
-## 发布文章
+升级：
 
-发布文章的基本命令如下：
+```bash
+dreamai-wechat-cli update --yes
+# 或
+npm install -g @tornadoami/dreamai-wechat-cli@latest
+```
+
+## 发布图文（Markdown → 草稿）
 
 ```bash
 dreamai-wechat-cli publish [options]
@@ -41,11 +44,32 @@ dreamai-wechat-cli publish [options]
 | --debug        | -  | 输出诊断日志到 stderr（或使用 `DREAMAI_WECHAT_DEBUG=1`） | 否  | 关闭              |
 | --help         | -  | 查看帮助               | 否  | -               |
 
-### 从本地文件读取并发布
+### 从本地文件读取并发布（图文）
 
 ```bash
 dreamai-wechat-cli publish -f article.md
 ```
+
+## 发布贴图（newspic → 草稿箱）
+
+官方 `article_type=newspic`，上传永久素材后调用 [draft/add](https://developers.weixin.qq.com/doc/subscription/api/draftbox/draftmanage/api_draft_add.html)。**仅进草稿箱，不群发**。详见 [docs/newspic.md](docs/newspic.md)。
+
+```bash
+# 从目录（wechat_post.json + panel_*.png）
+dreamai-wechat-cli newspic publish --from-dir /path/to/post_bundle
+
+# 手动指定
+dreamai-wechat-cli newspic publish \
+  --title "标题（建议≤20字）" \
+  --content "贴图描述正文" \
+  --image ./01.png --image ./02.png
+```
+
+| 参数 | 说明 |
+| --- | --- |
+| `--from-dir` | 读目录内 `wechat_post.json`（title、description）与 `panel_*.png` |
+| `--max-title-chars` | 默认 20（贴图标题建议） |
+| `--app-id` / `--app-secret` | 覆盖 `WECHAT_APP_ID` / `WECHAT_APP_SECRET` |
 
 ### 全员群发图文（高级接口）
 
@@ -109,7 +133,7 @@ dreamai-wechat-cli theme [options]
 dreamai-wechat-cli theme -l
 ```
 
-## Frontmatter 要求
+## Frontmatter 要求（仅 `publish` 图文）
 
 建议在 Markdown 顶部包含一段 frontmatter：
 
@@ -138,6 +162,14 @@ source_url: https://example.com
 * 发布成功前，最终内容仍需包含有效 `title` 与 `cover`（`cover` 可由渲染流程自动推导）
 
 ## 常见问题
+
+### 贴图：`invalid media_id`（40007）
+
+图片须为**永久素材**的 `image_media_id`。请使用 `newspic publish`（内部走 `material/add_material`），勿混用临时素材 ID。
+
+### 贴图：封面尺寸不合法（53401）
+
+勿手写无效 `cover_info`；请升级至 ≥2.1.0 并使用官方 CLI 默认 payload。
 
 ### 图片上传失败
 
