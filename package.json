@@ -1,6 +1,6 @@
 {
   "name": "@tornadoami/dreamai-wechat-cli",
-  "version": "2.0.5",
+  "version": "2.1.0",
   "description": "dreamai-wechat-cli — WeChat OA markdown render & draft publishing (Wenyan fork)",
   "author": "iamtornado",
   "license": "Apache-2.0",
@@ -45,6 +45,7 @@
     "test:cli": "vitest run tests/cli.test.ts",
     "test:render": "vitest run tests/render.test.ts",
     "test:publish": "vitest run tests/publish.test.ts",
+    "test:newspic": "vitest run tests/newspic.test.ts",
     "test:realPublish": "pnpm build && pnpm dotenv -e .env.test -- node ./dist/cli.js publish -f tests/publish.md -c tests/manhua.css --no-mac-style",
     "test:serverPublish": "pnpm build && node ./dist/cli.js publish -f tests/publish.md -c tests/manhua.css --no-mac-style --server http://localhost:3000"
   },

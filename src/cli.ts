@@ -24,6 +24,7 @@ import {
 } from "./wechat/draftApi.js";
 import { massSendAllMpnews } from "./wechat/massApi.js";
 import { mergeDraftsAdd } from "./wechat/mergeDrafts.js";
+import { runNewspicPublish } from "./commands/newspicPublish.js";
 import { getInputContent } from "./utils.js";
 import { confirmUpdatePrompt, resolveRegistryVersion, runGlobalInstall } from "./update.js";
 
@@ -344,6 +345,102 @@ export function createProgram(version: string = pkg.version): Command {
                 console.log(media_id);
             });
         });
+
+    const newspicRoot = program
+        .command("newspic")
+        .description("微信公众号贴图（图片消息 newspic，draft/add 进草稿箱）");
+
+    newspicRoot
+        .command("publish")
+        .description(
+            "上传分镜图为永久素材并创建贴图草稿（官方 article_type=newspic，仅进草稿箱不群发）",
+        )
+        .option("--title <text>", "贴图标题（≤20 字，可用 wechat_post.json 覆盖）")
+        .option("--content <text>", "贴图描述正文")
+        .option("--wechat-post <path>", "wechat_post.json 路径（读取 title、description）")
+        .option(
+            "--from-dir <dir>",
+            "从目录发布：读取 wechat_post.json（title、description）与 panel_*.png 分镜图",
+        )
+        .option(
+            "--image <path>",
+            "图片路径，可重复指定（按顺序上传）",
+            (value: string, prev: string[] | undefined) => (prev ?? []).concat(value),
+            [] as string[],
+        )
+        .option("--images-dir <dir>", "从目录读取全部图片（按文件名排序）")
+        .option("--need-open-comment <0|1>", "是否打开评论（默认 1）", "1")
+        .option("--only-fans-can-comment <0|1>", "是否仅粉丝可评论（默认 0）", "0")
+        .option("--max-title-chars <n>", "标题最大字数（贴图建议 20）", "20")
+        .option("--app-id <id>", "override WECHAT_APP_ID")
+        .option("--app-secret <secret>", "override WECHAT_APP_SECRET")
+        .option("--debug", "诊断输出到 stderr（或 DREAMAI_WECHAT_DEBUG=1）", false)
+        .action(
+            async (opts: {
+                title?: string;
+                content?: string;
+                wechatPost?: string;
+                fromDir?: string;
+                image: string[];
+                imagesDir?: string;
+                needOpenComment: string;
+                onlyFansCanComment: string;
+                maxTitleChars: string;
+                appId?: string;
+                appSecret?: string;
+                debug?: boolean;
+            }) => {
+                await runCommandWrapper(async () => {
+                    const log = createDebugLog(resolveDebug(opts.debug));
+                    const needOpen = parseInt(opts.needOpenComment, 10);
+                    const onlyFans = parseInt(opts.onlyFansCanComment, 10);
+                    const maxTitle = parseInt(opts.maxTitleChars, 10) || 20;
+                    if (needOpen !== 0 && needOpen !== 1) {
+                        throw new Error("--need-open-comment 只能为 0 或 1");
+                    }
+                    if (onlyFans !== 0 && onlyFans !== 1) {
+                        throw new Error("--only-fans-can-comment 只能为 0 或 1");
+                    }
+                    log.phase("newspic_publish_begin", {
+                        fromDir: opts.fromDir ?? null,
+                        imageCount: opts.image?.length ?? 0,
+                        appIdMasked: maskWechatAppId(opts.appId),
+                    });
+                    const t0 = Date.now();
+                    const result = await runNewspicPublish({
+                        title: opts.title,
+                        content: opts.content,
+                        wechatPostFile: opts.wechatPost,
+                        fromDir: opts.fromDir,
+                        images: opts.image ?? [],
+                        imagesDir: opts.imagesDir,
+                        needOpenComment: needOpen as 0 | 1,
+                        onlyFansCanComment: onlyFans as 0 | 1,
+                        maxTitleChars: maxTitle,
+                        appId: opts.appId,
+                        appSecret: opts.appSecret,
+                    });
+                    log.phase("newspic_publish_end", {
+                        ms: Date.now() - t0,
+                        media_id: result.media_id,
+                        image_count: result.image_count,
+                        title: result.title,
+                    });
+                    console.log(
+                        JSON.stringify(
+                            {
+                                status: "drafted",
+                                media_id: result.media_id,
+                                title: result.title,
+                                image_count: result.image_count,
+                            },
+                            null,
+                            2,
+                        ),
+                    );
+                });
+            },
+        );
 
     const massRoot = program.command("mass").description("微信群发（高级接口 message/mass/sendall，需认证号与 IP 白名单）");
 

@@ -58,7 +58,9 @@ npm install -g github:iamtornado/dreamai-wechat-cli
 
 ```bash
 dreamai-wechat-cli publish -f article.md
+dreamai-wechat-cli newspic publish --from-dir /path/to/post_bundle
 dreamai-wechat-cli draft --help
+dreamai-wechat-cli update --yes   # 升级到 npm 最新版
 ```
 
 从本仓库**克隆开发**时：请先 `npm install`；`prepare` / `npm run build` 会生成 `dist/`。
@@ -72,6 +74,7 @@ dreamai-wechat-cli <command> [options]
 | 命令      | 说明        |
 | ------- | --------- |
 | [publish](docs/publish.md) | 发布文章      |
+| [newspic](docs/newspic.md) | 贴图草稿：`newspic publish`（`article_type=newspic`） |
 | [mass](docs/mass.md) | 高级群发：`mass sendall`（默认全员图文 `mpnews`） |
 | draft   | 草稿箱 API：`count` / `list` / `get` / `update` / `delete` / `add` / [`merge-add`](docs/draft-merge.md)（`dreamai-wechat-cli draft --help`） |
 | update  | CLI 自更新：`update` / `update --check` / `update --yes` |
